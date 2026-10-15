@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2025全球十大集装箱港口 · 百度地图版</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; }
+        #map { width: 100%; height: 100%; background: #0a1628; }
+
+        /* ===== 右侧知识卡片 ===== */
+        #info-card {
+            position: absolute; top: 20px; right: 20px; width: 360px;
+            max-height: calc(100% - 40px); overflow-y: auto;
+            background: rgba(10, 22, 40, 0.94);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            border-radius: 16px; padding: 0; z-index: 1000;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            display: none; color: #e0e8f0;
+        }
+        #info-card.show { display: block; }
+        .card-header { padding: 18px 20px 12px; border-bottom: 1px solid rgba(0, 180, 255, 0.2); position: relative; }
+        .card-header .port-rank {
+            display: inline-block;
+            background: linear-gradient(135deg, #00b4ff, #0066cc);
+            color: #fff; font-size: 12px; font-weight: 700;
+            padding: 3px 10px; border-radius: 20px; margin-bottom: 8px; letter-spacing: 1px;
+        }
+        .card-header h2 { font-size: 22px; font-weight: 700; color: #ffffff; margin-bottom: 4px; }
+        .card-header .country-tag { font-size: 13px; color: #7eb8e0; }
+        .close-btn {
+            position: absolute; top: 14px; right: 16px;
+            background: rgba(255, 255, 255, 0.08); border: none; color: #a0b8d0;
+            font-size: 18px; width: 30px; height: 30px; border-radius: 50%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .close-btn:hover { background: rgba(255, 255, 255, 0.18); color: #fff; }
+        .card-stats { display: flex; padding: 16px 20px; gap: 12px; }
+        .stat-box {
+            flex: 1; background: rgba(0, 180, 255, 0.08);
+            border: 1px solid rgba(0, 180, 255, 0.15);
+            border-radius: 10px; padding: 12px 10px; text-align: center;
+        }
+        .stat-box .stat-value { font-size: 22px; font-weight: 700; color: #00d4ff; line-height: 1.2; }
+        .stat-box .stat-label { font-size: 11px; color: #6a8aa8; margin-top: 4px; }
+        .stat-box .stat-unit { font-size: 11px; color: #4a6a88; }
+        .growth-positive { color: #00e676 !important; }
+        .growth-low { color: #ffab40 !important; }
+        .card-body { padding: 0 20px 18px; }
+        .section-title {
+            font-size: 13px; font-weight: 700; color: #00b4ff;
+            text-transform: uppercase; letter-spacing: 1.5px;
+            margin: 14px 0 8px; padding-bottom: 4px;
+            border-bottom: 1px dashed rgba(0, 180, 255, 0.2);
+        }
+        .port-group-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+        .port-group-tags span {
+            background: rgba(0, 180, 255, 0.12);
+            border: 1px solid rgba(0, 180, 255, 0.25);
+            color: #7ec8e8; font-size: 12px; padding: 4px 10px; border-radius: 14px;
+        }
+        .knowledge-list { list-style: none; padding: 0; }
+        .knowledge-list li {
+            font-size: 13px; line-height: 1.7; color: #b0c8d8;
+            padding: 6px 0 6px 18px; position: relative;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .knowledge-list li:last-child { border-bottom: none; }
+        .knowledge-list li::before {
+            content: '▸'; position: absolute; left: 0; color: #00b4ff; font-weight: bold;
+        }
+        .knowledge-list li strong { color: #e0f0ff; }
+
+        /* ===== 图例 ===== */
+        #legend {
+            position: absolute; bottom: 20px; left: 20px; z-index: 1000;
+            background: rgba(10, 22, 40, 0.92);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 180, 255, 0.25);
+            border-radius: 12px; padding: 14px 18px; color: #c0d8e8;
+            font-size: 12px; max-width: 280px;
+        }
+        #legend h4 { font-size: 13px; color: #00b4ff; margin-bottom: 10px; letter-spacing: 1px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+        .legend-swatch { width: 22px; height: 4px; border-radius: 2px; flex-shrink: 0; }
+        .legend-dot {
+            width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; border: 2px solid;
+        }
+        .legend-note {
+            font-size: 11px; color: #5a7a98; margin-top: 8px; line-height: 1.5;
+            border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;
+        }
+
+        /* ===== 缩放提示 ===== */
+        #zoom-hint {
+            position: absolute; bottom: 20px; right: 20px; z-index: 1000;
+            background: rgba(0, 180, 255, 0.12);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            border-radius: 10px; padding: 10px 16px; color: #7ec8e8;
+            font-size: 12px; transition: opacity 0.5s; pointer-events: none;
+        }
+        #zoom-hint.hidden { opacity: 0; }
+
+        #info-card::-webkit-scrollbar { width: 5px; }
+        #info-card::-webkit-scrollbar-track { background: transparent; }
+        #info-card::-webkit-scrollbar-thumb { background: rgba(0,180,255,0.3); border-radius: 3px; }
+
+        /* ===== 百度地图自定义覆盖物样式 ===== */
+        .port-marker-inner {
+            width: 34px; height: 34px;
+            background: linear-gradient(145deg, #00b4ff, #0066cc);
+            border: 3px solid #fff;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 3px 12px rgba(0, 150, 255, 0.6);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .port-marker-inner:hover {
+            transform: scale(1.15);
+            box-shadow: 0 5px 20px rgba(0, 180, 255, 0.85);
+        }
+        .port-marker-inner span {
+            color: #fff; font-weight: 900; font-size: 13px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+        }
+        .port-marker-top3 .port-marker-inner {
+            width: 42px; height: 42px;
+            background: linear-gradient(145deg, #ff6b6b, #d32f2f);
+            box-shadow: 0 3px 12px rgba(255, 80, 80, 0.7);
+        }
+        .port-marker-top3 .port-marker-inner span { font-size: 15px; }
+
+        .city-label {
+            display: flex; align-items: center; gap: 4px;
+            color: #d0e8ff; font-size: 11px; white-space: nowrap;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.8);
+            font-weight: 600; pointer-events: none;
+        }
+        .city-dot {
+            width: 6px; height: 6px; background: #ffffff;
+            border: 1.5px solid #00b4ff; border-radius: 50%;
+            display: inline-block; box-shadow: 0 0 6px rgba(0,180,255,0.9);
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- 知识卡片 -->
+<div id="info-card">
+    <div class="card-header">
+        <div class="port-rank" id="card-rank">NO.1</div>
+        <h2 id="card-name">上海港</h2>
+        <div class="country-tag" id="card-country">🇨🇳 中国</div>
+        <button class="close-btn" onclick="closeCard()">✕</button>
+    </div>
+    <div class="card-stats">
+        <div class="stat-box">
+            <div class="stat-value" id="card-throughput">5506</div>
+            <div class="stat-label">吞吐量</div>
+            <div class="stat-unit">万 TEU</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value growth-positive" id="card-growth">+6.9%</div>
+            <div class="stat-label">同比增幅</div>
+            <div class="stat-unit">2025 vs 2024</div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="section-title">港口群定位</div>
+        <div class="port-group-tags" id="card-groups"></div>
+        <div class="section-title">知识拓展</div>
+        <ul class="knowledge-list" id="card-knowledge"></ul>
+    </div>
+</div>
+
+<!-- 图例 -->
+<div id="legend">
+    <h4>图例</h4>
+    <div class="legend-item"><span class="legend-swatch" style="background:#ff4757;"></span> 暖流</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#2e86de;"></span> 寒流</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#ffd32a; height:3px; border-top:2px dashed #ffd32a; background:transparent;"></span> 主要海运航线</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#5dade2; height:2px;"></span> 世界主要河流</div>
+    <div class="legend-item"><span class="legend-dot" style="border-color:#00b4ff; background:rgba(0,180,255,0.3);"></span> 十大港口</div>
+    <div class="legend-note">💡 放大地图至 Zoom ≥ 5 显示港口标注<br>Zoom ≥ 6 显示主要城市</div>
+</div>
+
+<!-- 缩放提示 -->
+<div id="zoom-hint">🔍 放大地图以查看港口标注</div>
+
+<!-- ========== 百度地图 API（WebGL 版） ========== -->
+<script src="https://api.map.baidu.com/api?type=webgl&v=1.0&ak=NS6ghtrZVGzgXUQxu6jZCoMQLfu5apwg&callback=initMap"></script>
+
+<script>
+// ===================== 十大港口数据（WGS84 经纬度） =====================
+const PORTS = [
+    {
+        rank: 1, name: "上海港", country: "中国", flag: "🇨🇳",
+        lat: 31.23, lng: 121.47,
+        throughput: 5506, growth: 6.9, growthClass: "growth-positive",
+        groups: ["长江三角洲港口群", "东北亚国际航运枢纽", "全球最大集装箱港"],
+        knowledge: [
+            "<strong>全球首个5000万标箱大港</strong>：2025年吞吐量达5506万TEU，连续16年居全球第一。",
+            "<strong>深水港优势</strong>：洋山深水港区水深超过15米，可停靠全球最大2.4万TEU级集装箱船。",
+            "<strong>航线网络</strong>：拥有近350条国际航线，覆盖全球200多个国家和地区的700多个港口，港口连通度连续13年全球第一。",
+            "<strong>自动化码头</strong>：洋山四期是全球规模最大的自动化集装箱码头，连续两年位居全球集装箱港口绩效指数（CPPI）榜首。"
+        ]
+    },
+    {
+        rank: 2, name: "新加坡港", country: "新加坡", flag: "🇸🇬",
+        lat: 1.26, lng: 103.83,
+        throughput: 4466, growth: 8.6, growthClass: "growth-positive",
+        groups: ["东南亚航运中心", "全球最大转运枢纽", "马六甲海峡枢纽港"],
+        knowledge: [
+            "<strong>全球最大转运枢纽</strong>：转口比例约78%，每年处理约20%的全球转运集装箱，连接600多个港口、涵盖120多个国家。",
+            "<strong>区位优势</strong>：扼守马六甲海峡东南侧，是太平洋与印度洋之间的航运要道，东西方海洋贸易必经之路。",
+            "<strong>大士超级港</strong>：正在建设的大士港将整合现有设施，建成后年吞吐能力可达6500万TEU。",
+            "<strong>燃油补给中心</strong>：全球最繁忙的船用燃料加油港，每年供应超过5000万吨燃油。"
+        ]
+    },
+    {
+        rank: 3, name: "宁波舟山港", country: "中国", flag: "🇨🇳",
+        lat: 29.87, lng: 121.55,
+        throughput: 4387, growth: 11.6, growthClass: "growth-positive",
+        groups: ["长江三角洲港口群", "全球最大货物吞吐量港", "深水良港"],
+        knowledge: [
+            "<strong>全球首个14亿吨大港</strong>：2025年货物吞吐量突破14亿吨，连续17年位居全球第一。",
+            "<strong>深水岸线资源</strong>：核心港区主航道水深22.5米以上，30万吨级巨轮可自由进出，40万吨级可候潮进出，世界少有。",
+            "<strong>集装箱增长迅猛</strong>：2025年集装箱吞吐量达4387万TEU，增幅11.6%位列十大港口之首，与新加坡港差距逐步缩小。",
+            "<strong>舟山群岛天然屏障</strong>：群岛环抱形成天然防波堤，域内水深浪小，建港条件优越。"
+        ]
+    },
+    {
+        rank: 4, name: "深圳港", country: "中国", flag: "🇨🇳",
+        lat: 22.50, lng: 113.88,
+        throughput: 3541, growth: 6.0, growthClass: "growth-positive",
+        groups: ["珠江三角洲港口群", "粤港澳大湾区枢纽", "外贸出口主力港"],
+        knowledge: [
+            "<strong>外向型经济窗口</strong>：毗邻香港，是中国改革开放的前沿港口，以外贸出口为主要特征。",
+            "<strong>多港区协同</strong>：由蛇口、赤湾、盐田等多个港区组成，盐田港区是超大型集装箱船的主要挂靠港。",
+            "<strong>粤港澳大湾区</strong>：与广州港、香港港形成珠三角港口群组合，共同服务大湾区世界级城市群。"
+        ]
+    },
+    {
+        rank: 5, name: "青岛港", country: "中国", flag: "🇨🇳",
+        lat: 36.07, lng: 120.38,
+        throughput: 3289, growth: 6.5, growthClass: "growth-positive",
+        groups: ["环渤海港口群", "东北亚航运枢纽", "黄河流域出海口"],
+        knowledge: [
+            "<strong>天然深水良港</strong>：胶州湾水域宽阔，不淤不冻，是中国北方少有的全年通航深水港。",
+            "<strong>自动化码头领先</strong>：青岛港自动化码头曾多次刷新集装箱装卸效率世界纪录。",
+            "<strong>海铁联运枢纽</strong>：通过陇海铁路连接黄河流域腹地，是中亚货物的重要出海口。"
+        ]
+    },
+    {
+        rank: 6, name: "广州港", country: "中国", flag: "🇨🇳",
+        lat: 23.13, lng: 113.26,
+        throughput: 2768, growth: 6.2, growthClass: "growth-positive",
+        groups: ["珠江三角洲港口群", "华南综合枢纽港", "千年商都海港"],
+        knowledge: [
+            "<strong>历史悠久的通商口岸</strong>：广州自唐宋以来就是中国重要的对外贸易港口，海上丝绸之路的起点之一。",
+            "<strong>南沙港区崛起</strong>：南沙深水港区的建设使广州港从内河港转型为海港，可停靠大型集装箱船。",
+            "<strong>珠江水系枢纽</strong>：通过珠江水系连接华南、西南广大腹地，内河集疏运条件优越。"
+        ]
+    },
+    {
+        rank: 7, name: "釜山港", country: "韩国", flag: "🇰🇷",
+        lat: 35.08, lng: 129.02,
+        throughput: 2488, growth: 2.0, growthClass: "growth-low",
+        groups: ["东北亚航运枢纽", "朝鲜半岛门户港", "国际中转港"],
+        knowledge: [
+            "<strong>韩国第一大港</strong>：位于韩半岛东南端，是连接太平洋和欧亚大陆的门户，世界第七大集装箱港。",
+            "<strong>中转货物占比高</strong>：中转货物占吞吐量约55%，是东北亚地区重要的国际中转枢纽。",
+            "<strong>釜山新港建设</strong>：正在推进釜山新港开发，目标2037年完工，规划53个泊位，年吞吐能力3500万TEU。",
+            "<strong>全自动化码头</strong>：釜山新港第7码头是韩国首个全自动化集装箱码头，2024年4月启用。"
+        ]
+    },
+    {
+        rank: 8, name: "天津港", country: "中国", flag: "🇨🇳",
+        lat: 38.98, lng: 117.75,
+        throughput: 2403, growth: 3.2, growthClass: "growth-low",
+        groups: ["环渤海港口群", "京津冀海上门户", "亚欧大陆桥东方起点"],
+        knowledge: [
+            "<strong>京津冀海上门户</strong>：是北京、天津及华北地区最重要的出海口，服务京津冀协同发展战略。",
+            "<strong>智能化集装箱码头</strong>：天津港北疆C段智能化集装箱码头实现了全流程自动化作业。",
+            "<strong>亚欧大陆桥通道</strong>：通过铁路连接二连浩特、阿拉山口等口岸，是中蒙俄经济走廊的重要节点。"
+        ]
+    },
+    {
+        rank: 9, name: "杰贝阿里港", country: "阿联酋", flag: "🇦🇪",
+        lat: 25.00, lng: 55.06,
+        throughput: 1560, growth: 0.4, growthClass: "growth-low",
+        groups: ["中东最大港口", "亚欧非交汇枢纽", "自由贸易区港"],
+        knowledge: [
+            "<strong>中东最大海港</strong>：连续28年被评为“中东最佳海港”，通过每周80多次服务连接全球150个港口。",
+            "<strong>世界最大人造港口</strong>：1979年建成，占地134平方公里，是中东地区最繁忙的港口。",
+            "<strong>杰贝阿里自贸区</strong>：拥有来自150多个国家的1万多家企业，包括100多家世界500强，吸引迪拜约24%的外国直接投资。",
+            "<strong>三洲交汇区位</strong>：位于亚洲、欧洲、非洲三块大陆交汇之处，覆盖西亚、南亚、非洲20亿人口市场。"
+        ]
+    },
+    {
+        rank: 10, name: "巴生港", country: "马来西亚", flag: "🇲🇾",
+        lat: 3.00, lng: 101.40,
+        throughput: 1514, growth: 3.4, growthClass: "growth-low",
+        groups: ["马六甲海峡枢纽港", "东南亚物流中心", "马来西亚最大港口"],
+        knowledge: [
+            "<strong>马六甲海峡黄金水道</strong>：位于全世界船只经停的马六甲海峡沿岸，距离吉隆坡约一小时车程。",
+            "<strong>东南亚第二大港</strong>：集装箱吞吐量在东南亚仅次于新加坡港，与全球120个国家有贸易往来。",
+            "<strong>西港扩建计划</strong>：营运商西港控股集团计划投资约83亿美元，将吞吐能力从每年1400万标箱提升至2700万标箱。",
+            "<strong>自由贸易区</strong>：巴生港自由贸易区占地一千英亩，提供完善的转口贸易和加工配套服务。"
+        ]
+    }
+];
+
+// ===================== 海运航线（WGS84） =====================
+const SHIPPING_ROUTES = [
+    { name: "亚洲—欧洲航线", points: [[121.5,31.2],[110,20],[103.8,1.3],[80,6],[50,12],[43,12],[32,30],[28,36],[10,38],[-5,36],[-9,38]] },
+    { name: "亚洲—北美航线", points: [[121.5,31.2],[140,35],[170,42],[-170,50],[-140,45],[-120,35],[-118,33]] },
+    { name: "跨太平洋航线", points: [[121.5,31.2],[135,30],[160,25],[-160,22],[-140,20],[-120,25],[-118,33]] },
+    { name: "亚洲—中东航线", points: [[103.8,1.3],[80,6],[72,18],[65,25],[58,25],[55,25]] },
+    { name: "欧洲—北美航线", points: [[-9,38],[-20,40],[-40,42],[-60,42],[-74,40]] },
+    { name: "亚洲—南美航线", points: [[121.5,31.2],[140,20],[170,10],[-170,-10],[-120,-20],[-80,-35],[-70,-35]] },
+];
+
+// ===================== 洋流（WGS84） =====================
+const OCEAN_CURRENTS = [
+    { type: "warm", name: "北赤道暖流", points: [[10,-160],[10,-120],[12,-80],[10,-40],[8,-20]] },
+    { type: "warm", name: "墨西哥湾暖流", points: [[25,-85],[30,-78],[35,-70],[40,-55],[45,-40],[50,-20]] },
+    { type: "warm", name: "北大西洋暖流", points: [[50,-20],[55,-10],[58,0],[62,10]] },
+    { type: "warm", name: "黑潮", points: [[20,125],[28,130],[35,140],[40,150],[42,160]] },
+    { type: "warm", name: "东澳大利亚暖流", points: [[-15,150],[-25,155],[-35,152],[-40,150]] },
+    { type: "warm", name: "巴西暖流", points: [[-5,-35],[-15,-38],[-25,-45],[-35,-52]] },
+    { type: "cold", name: "拉布拉多寒流", points: [[60,-55],[55,-50],[50,-45],[45,-50]] },
+    { type: "cold", name: "加那利寒流", points: [[30,-12],[25,-15],[20,-18],[15,-20]] },
+    { type: "cold", name: "秘鲁寒流", points: [[-5,-80],[-15,-78],[-25,-75],[-35,-73]] },
+    { type: "cold", name: "西风漂流", points: [[-45,-60],[-48,-30],[-48,0],[-48,30],[-48,60]] },
+    { type: "cold", name: "加利福尼亚寒流", points: [[40,-125],[35,-122],[30,-118],[25,-112]] },
+    { type: "cold", name: "本格拉寒流", points: [[-15,12],[-25,14],[-35,16],[-40,18]] },
+];
+
+// ===================== 世界主要河流（WGS84） =====================
+const RIVERS = [
+    { name: "尼罗河", points: [[30,32],[25,33],[20,33],[15,33],[10,32],[5,32],[0,31]] },
+    { name: "亚马逊河", points: [[-5,-50],[-5,-55],[-5,-60],[-5,-65],[-5,-70],[-5,-75]] },
+    { name: "长江", points: [[35,90],[33,95],[30,102],[29,107],[28,112],[27,117],[26,120],[25,121.5]] },
+    { name: "密西西比河", points: [[48,-95],[42,-92],[38,-90],[35,-90],[32,-91],[30,-90]] },
+    { name: "黄河", points: [[37,100],[36,105],[35,110],[35,115],[37,118]] },
+    { name: "刚果河", points: [[5,15],[-2,18],[-5,22],[-8,25]] },
+    { name: "湄公河", points: [[32,100],[25,102],[20,102],[15,103],[10,105],[8,106]] },
+    { name: "伏尔加河", points: [[57,33],[55,38],[52,42],[49,45],[47,47],[46,48]] },
+    { name: "莱茵河", points: [[47,9],[49,8],[51,7],[52,6],[53,5]] },
+    { name: "多瑙河", points: [[48,8],[47,12],[46,16],[45,20],[44,24],[43,28]] },
+];
+
+// ===================== 主要城市（WGS84） =====================
+const CITIES = [
+    { name: "北京", lat: 39.90, lng: 116.40 },
+    { name: "东京", lat: 35.68, lng: 139.69 },
+    { name: "首尔", lat: 37.57, lng: 126.98 },
+    { name: "伦敦", lat: 51.51, lng: -0.13 },
+    { name: "巴黎", lat: 48.86, lng: 2.35 },
+    { name: "纽约", lat: 40.71, lng: -74.01 },
+    { name: "洛杉矶", lat: 34.05, lng: -118.24 },
+    { name: "悉尼", lat: -33.87, lng: 151.21 },
+    { name: "开罗", lat: 30.04, lng: 31.24 },
+    { name: "孟买", lat: 19.08, lng: 72.88 },
+    { name: "圣保罗", lat: -23.55, lng: -46.63 },
+    { name: "莫斯科", lat: 55.76, lng: 37.62 },
+    { name: "柏林", lat: 52.52, lng: 13.40 },
+    { name: "迪拜", lat: 25.20, lng: 55.27 },
+    { name: "曼谷", lat: 13.76, lng: 100.50 },
+    { name: "雅加达", lat: -6.21, lng: 106.85 },
+];
+
+// ===================== 坐标转换：WGS84 → BD09 =====================
+var PI = Math.PI;
+var X_PI = PI * 3000.0 / 180.0;
+var A = 6378245.0;
+var EE = 0.00669342162296594323;
+
+function outOfChina(lng, lat) {
+    return (lng < 72.004 || lng > 137.8347) || (lat < 0.8293 || lat > 55.8271);
+}
+function transformLat(lng, lat) {
+    var ret = -100.0 + 2.0 * lng + 3.0 * lat + 0.2 * lat * lat + 0.1 * lng * lat + 0.2 * Math.sqrt(Math.abs(lng));
+    ret += (20.0 * Math.sin(6.0 * lng * PI) + 20.0 * Math.sin(2.0 * lng * PI)) * 2.0 / 3.0;
+    ret += (20.0 * Math.sin(lat * PI) + 40.0 * Math.sin(lat / 3.0 * PI)) * 2.0 / 3.0;
+    ret += (160.0 * Math.sin(lat / 12.0 * PI) + 320 * Math.sin(lat * PI / 30.0)) * 2.0 / 3.0;
+    return ret;
+}
+function transformLng(lng, lat) {
+    var ret = 300.0 + lng + 2.0 * lat + 0.1 * lng * lng + 0.1 * lng * lat + 0.1 * Math.sqrt(Math.abs(lng));
+    ret += (20.0 * Math.sin(6.0 * lng * PI) + 20.0 * Math.sin(2.0 * lng * PI)) * 2.0 / 3.0;
+    ret += (20.0 * Math.sin(lng * PI) + 40.0 * Math.sin(lng / 3.0 * PI)) * 2.0 / 3.0;
+    ret += (150.0 * Math.sin(lng / 12.0 * PI) + 300.0 * Math.sin(lng / 30.0 * PI)) * 2.0 / 3.0;
+    return ret;
+}
+function wgs84togcj02(lng, lat) {
+    if (outOfChina(lng, lat)) return [lng, lat];
+    var dlat = transformLat(lng - 105.0, lat - 35.0);
+    var dlng = transformLng(lng - 105.0, lat - 35.0);
+    var radlat = lat / 180.0 * PI;
+    var magic = Math.sin(radlat);
+    magic = 1 - EE * magic * magic;
+    var sqrtmagic = Math.sqrt(magic);
+    dlat = (dlat * 180.0) / ((A * (1 - EE)) / (magic * sqrtmagic) * PI);
+    dlng = (dlng * 180.0) / (A / sqrtmagic * Math.cos(radlat) * PI);
+    return [lng + dlng, lat + dlat];
+}
+function gcj02tobd09(lng, lat) {
+    var z = Math.sqrt(lng * lng + lat * lat) + 0.00002 * Math.sin(lat * X_PI);
+    var theta = Math.atan2(lat, lng) + 0.000003 * Math.cos(lng * X_PI);
+    var bd_lng = z * Math.cos(theta) + 0.0065;
+    var bd_lat = z * Math.sin(theta) + 0.006;
+    return [bd_lng, bd_lat];
+}
+function wgs84tobd09(lng, lat) {
+    var gcj = wgs84togcj02(lng, lat);
+    return gcj02tobd09(gcj[0], gcj[1]);
+}
+function toBdPoint(lng, lat) {
+    var bd = wgs84tobd09(lng, lat);
+    return new BMapGL.Point(bd[0], bd[1]);
+}
+
+// ===================== 全局变量 =====================
+var map;
+var overlays = {
+    ports: [], cities: [], routes: [], currents: [], rivers: [], countries: []
+};
+var lastPortClickTime = 0;
+
+// ===================== 初始化地图（百度 API 回调） =====================
+function initMap() {
+    map = new BMapGL.Map('map', {
+        minZoom: 3,
+        maxZoom: 10,
+        enableBizAuthLogo: false
+    });
+    // 以 BD09 坐标 (0, 20) 附近为中心，zoom 3 显示世界
+    map.centerAndZoom(new BMapGL.Point(10, 25), 3);
+    map.enableScrollWheelZoom(true);
+    map.setMapStyleV2({ styleId: 'midnight' }); // 百度官方深色主题（若无效则用默认）
+
+    // 绘制各图层
+    drawRivers();
+    drawCurrents();
+    drawShippingRoutes();
+    drawCities();
+    drawPorts();
+    loadCountries();
+
+    // 点击地图空白关闭卡片
+    map.addEventListener('click', function() {
+        if (Date.now() - lastPortClickTime < 300) return;
+        closeCard();
+    });
+
+    // 缩放控制图层显隐
+    map.addEventListener('zoomend', updateLayersByZoom);
+    updateLayersByZoom();
+}
+
+// ===================== 绘制河流 =====================
+function drawRivers() {
+    RIVERS.forEach(function(river) {
+        var pts = river.points.map(function(p) { return toBdPoint(p[1], p[0]); });
+        var polyline = new BMapGL.Polyline(pts, {
+            strokeColor: '#5dade2',
+            strokeWeight: 1.5,
+            strokeOpacity: 0.55
+        });
+        map.addOverlay(polyline);
+        overlays.rivers.push(polyline);
+    });
+}
+
+// ===================== 绘制洋流 =====================
+function drawCurrents() {
+    OCEAN_CURRENTS.forEach(function(cur) {
+        var pts = cur.points.map(function(p) { return toBdPoint(p[1], p[0]); });
+        var color = cur.type === 'warm' ? '#ff4757' : '#2e86de';
+        var polyline = new BMapGL.Polyline(pts, {
+            strokeColor: color,
+            strokeWeight: 2.5,
+            strokeOpacity: 0.7,
+            strokeStyle: cur.type === 'warm' ? 'solid' : 'dashed'
+        });
+        map.addOverlay(polyline);
+        overlays.currents.push(polyline);
+    });
+}
+
+// ===================== 绘制海运航线 =====================
+function drawShippingRoutes() {
+    SHIPPING_ROUTES.forEach(function(route) {
+        var pts = route.points.map(function(p) { return toBdPoint(p[1], p[0]); });
+        var polyline = new BMapGL.Polyline(pts, {
+            strokeColor: '#ffd32a',
+            strokeWeight: 2,
+            strokeOpacity: 0.65,
+            strokeStyle: 'dashed'
+        });
+        map.addOverlay(polyline);
+        overlays.routes.push(polyline);
+    });
+}
+
+// ===================== 绘制城市 =====================
+function drawCities() {
+    CITIES.forEach(function(city) {
+        var pt = toBdPoint(city.lng, city.lat);
+        var label = new BMapGL.Label(
+            '<div class="city-label"><span class="city-dot"></span>' + city.name + '</div>',
+            { position: pt, offset: new BMapGL.Size(0, -6) }
+        );
+        label.setStyle({
+            background: 'transparent', border: '0', padding: '0',
+            color: '#d0e8ff', fontSize: '11px', boxShadow: 'none'
+        });
+        map.addOverlay(label);
+        overlays.cities.push(label);
+    });
+}
+
+// ===================== 绘制港口 =====================
+function drawPorts() {
+    PORTS.forEach(function(port) {
+        var pt = toBdPoint(port.lng, port.lat);
+        var isTop3 = port.rank <= 3;
+        var size = isTop3 ? 42 : 34;
+        var offsetX = -size / 2;
+        var offsetY = -size / 2;
+
+        var label = new BMapGL.Label(
+            '<div class="port-marker-inner"><span>' + port.rank + '</span></div>',
+            { position: pt, offset: new BMapGL.Size(offsetX, offsetY) }
+        );
+        label.setStyle({
+            background: 'transparent', border: '0', padding: '0',
+            boxShadow: 'none', color: '#fff'
+        });
+        if (isTop3) {
+            label.setStyle({ zIndex: 200 });
+        }
+        // 点击事件
+        label.addEventListener('click', function(e) {
+            lastPortClickTime = Date.now();
+            if (e && e.stopPropagation) e.stopPropagation();
+            showPortCard(port);
+        });
+        map.addOverlay(label);
+        overlays.ports.push(label);
+    });
+}
+
+// ===================== 加载国家轮廓（GeoJSON → BD09） =====================
+function loadCountries() {
+    fetch('https://cdn.jsdelivr.net/gh/martynafford/natural-earth-geojson/110m/cultural/ne_110m_admin_0_countries.json')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            var features = data.features;
+            features.forEach(function(feature) {
+                var geometry = feature.geometry;
+                if (!geometry) return;
+                if (geometry.type === 'Polygon') {
+                    drawCountryPolygon(geometry.coordinates);
+                } else if (geometry.type === 'MultiPolygon') {
+                    geometry.coordinates.forEach(function(polyCoords) {
+                        drawCountryPolygon(polyCoords);
+                    });
+                }
+            });
+        })
+        .catch(function() {
+            console.log('国家轮廓 GeoJSON 加载失败');
+        });
+}
+
+function drawCountryPolygon(rings) {
+    // 外环 rings[0]，内环 rings[1..]（暂不处理内环挖空，只画外环轮廓）
+    var outerRing = rings[0];
+    if (!outerRing || outerRing.length < 3) return;
+    var pts = outerRing.map(function(coord) {
+        return toBdPoint(coord[0], coord[1]);
+    });
+    var polygon = new BMapGL.Polygon(pts, {
+        strokeColor: 'rgba(100, 160, 220, 0.55)',
+        strokeWeight: 0.8,
+        strokeOpacity: 0.6,
+        fillColor: 'rgba(20, 50, 90, 0.35)',
+        fillOpacity: 0.35
+    });
+    map.addOverlay(polygon);
+    overlays.countries.push(polygon);
+}
+
+// ===================== 缩放控制图层显隐 =====================
+function updateLayersByZoom() {
+    var zoom = map.getZoom();
+    var hint = document.getElementById('zoom-hint');
+
+    // 河流、洋流、国家：始终显示
+    overlays.rivers.forEach(function(o) { o.show(); });
+    overlays.currents.forEach(function(o) { o.show(); });
+    overlays.countries.forEach(function(o) { o.show(); });
+
+    // 航线：zoom >= 4
+    if (zoom >= 4) {
+        overlays.routes.forEach(function(o) { o.show(); });
+    } else {
+        overlays.routes.forEach(function(o) { o.hide(); });
+    }
+
+    // 港口：zoom >= 5
+    if (zoom >= 5) {
+        overlays.ports.forEach(function(o) { o.show(); });
+        hint.classList.add('hidden');
+    } else {
+        overlays.ports.forEach(function(o) { o.hide(); });
+        hint.classList.remove('hidden');
+    }
+
+    // 城市：zoom >= 6
+    if (zoom >= 6) {
+        overlays.cities.forEach(function(o) { o.show(); });
+    } else {
+        overlays.cities.forEach(function(o) { o.hide(); });
+    }
+}
+
+// ===================== 知识卡片 =====================
+function showPortCard(port) {
+    document.getElementById('card-rank').textContent = 'NO.' + port.rank;
+    document.getElementById('card-name').textContent = port.name;
+    document.getElementById('card-country').textContent = port.flag + ' ' + port.country;
+    document.getElementById('card-throughput').textContent = port.throughput;
+    var growthEl = document.getElementById('card-growth');
+    growthEl.textContent = '+' + port.growth + '%';
+    growthEl.className = 'stat-value ' + port.growthClass;
+
+    var groupsEl = document.getElementById('card-groups');
+    groupsEl.innerHTML = port.groups.map(function(g) { return '<span>' + g + '</span>'; }).join('');
+
+    var knowledgeEl = document.getElementById('card-knowledge');
+    knowledgeEl.innerHTML = port.knowledge.map(function(k) { return '<li>' + k + '</li>'; }).join('');
+
+    var card = document.getElementById('info-card');
+    card.classList.add('show');
+    card.scrollTop = 0;
+}
+
+function closeCard() {
+    document.getElementById('info-card').classList.remove('show');
+}
+
+console.log('✅ 百度地图版十大港口交互地图脚本已加载');
+</script>
+</body>
+</html>
